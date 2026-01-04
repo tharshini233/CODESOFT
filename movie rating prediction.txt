@@ -1,0 +1,69 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LinearRegression
+
+df = pd.read_csv("IMDb Movies India.csv", encoding='latin1')   
+
+df.dropna(subset=['Rating'], inplace=True)
+
+X = df[["Genre", "Director", "Actor 1", "Actor 2", "Actor 3", "Year"]].copy()
+y = df["Rating"]
+
+encoder = LabelEncoder()
+
+def safe_encode(encoder_obj, value, column_classes):
+    if value in column_classes:
+        return encoder_obj.transform([value])[0]
+    else:
+        if 'Unknown' in column_classes:
+            return encoder_obj.transform(['Unknown'])[0]
+        else:
+            return -1
+encoder_genre = LabelEncoder()
+X["Genre"] = encoder_genre.fit_transform(X["Genre"])
+
+encoder_director = LabelEncoder()
+X["Director"] = encoder_director.fit_transform(X["Director"])
+
+encoder_actor1 = LabelEncoder()
+X["Actor 1"] = encoder_actor1.fit_transform(X["Actor 1"])
+
+encoder_actor2 = LabelEncoder()
+X["Actor 2"] = encoder_actor2.fit_transform(X["Actor 2"])
+
+encoder_actor3 = LabelEncoder()
+X["Actor 3"] = encoder_actor3.fit_transform(X["Actor 3"])
+
+
+X['Year'] = X['Year'].astype(str).str.replace(r'[()]', '', regex=True) 
+X['Year'] = pd.to_numeric(X['Year'], errors='coerce') 
+X['Year'] = X['Year'].fillna(X['Year'].median())
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+print("Sample Predictions:", predictions[:5])
+
+sample_genre = "Action"
+sample_director = "Nolan"
+sample_actor1 = "Tom Hanks"
+sample_actor2 = "Unknown" 
+sample_actor3 = "Unknown"
+sample_year = 2023
+
+sample = pd.DataFrame({
+    "Genre": [safe_encode(encoder_genre, sample_genre, encoder_genre.classes_)],
+    "Director": [safe_encode(encoder_director, sample_director, encoder_director.classes_)],
+    "Actor 1": [safe_encode(encoder_actor1, sample_actor1, encoder_actor1.classes_)],
+    "Actor 2": [safe_encode(encoder_actor2, sample_actor2, encoder_actor2.classes_)],
+    "Actor 3": [safe_encode(encoder_actor3, sample_actor3, encoder_actor3.classes_)],
+    "Year": [sample_year]
+})
+
+print("Predicted Rating:", model.predict(sample)[0])
